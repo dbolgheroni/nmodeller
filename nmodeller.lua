@@ -17,4 +17,7 @@ end
 
 print(prefix .. #occ .. " occurrence points found")
 print(gdal.mysin(30))
---print(gdal.open("rain_coolest.tif"))
+
+raster = gdal.open("temp_avg.tif")
+nodata = gdal.nodata(raster)
+print(nodata)

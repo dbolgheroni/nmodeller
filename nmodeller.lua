@@ -16,8 +16,9 @@ else
 end
 
 print(prefix .. #occ .. " occurrence points found")
-print(gdal.mysin(30))
 
 raster = gdal.open("temp_avg.tif")
-nodata = gdal.nodata(raster)
-print(nodata)
+print("DEBUG")
+print("nodata = " .. raster:nodata())
+print("x = " .. raster:x())
+print("y = " .. raster:y())

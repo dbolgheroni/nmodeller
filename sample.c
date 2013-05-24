@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "gdal.h"
 #include "cpl_conv.h"
 
@@ -51,7 +52,8 @@ int main() {
     int nXSize = GDALGetRasterBandXSize(hBand);
     int nYSize = GDALGetRasterBandYSize(hBand);
 
-    pafScanline = (float *) CPLMalloc(sizeof (float)*nXSize);
+    //pafScanline = (float *) CPLMalloc(sizeof (float)*nXSize);
+    pafScanline = (float *) calloc(sizeof (float), nXSize);
 
     /* read nodata value */
     double nodata = GDALGetRasterNoDataValue(hBand, 0);

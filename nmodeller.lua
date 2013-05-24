@@ -44,11 +44,13 @@ end
 
 print(prefix .. #occ .. " occurrence points found")
 
-raster = gdal.open("temp_avg.tif")
-print("DEBUG")
-print("nodata = " .. raster:nodata())
-print("xmax = " .. raster:xmax())
-print("ymax = " .. raster:ymax())
+dataset = gdal.open("temp_avg.tif")
+l = gdal.raster(dataset);
 
-print("lonlat2xy()") 
-print(gdal.lonlat2xy(-11.15, -68.85))
+envvar = {}
+envvar = l:read();
+
+for i, v in ipairs(occ) do
+    x, y = gdal.lonlat2xy(dataset, v[3], v[4])
+    print(x, y, string.format('%.2f', envvar[x][y]))
+end

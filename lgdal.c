@@ -30,7 +30,7 @@
  * complexities of dealing with GDAL libraries should be hidden here.
  * The API presented attend the requirement for the Lua part of
  * nmodeller to be as simple and trivial as possible, and make
- * straighforward to anyone to understand and extend nmodeller.
+ * straighforward for anyone to understand and extend nmodeller.
  */
 
 #include <stdio.h>
@@ -44,25 +44,38 @@
 #include "gdal.h"
  
 /* globals */
-GDALDatasetH hDataset;
 
 /* open */
 static int l_open (lua_State *L) {
-    /* a raster is actually a band */
     printf("opening raster\n");
     const char *file;
     file = lua_tostring(L, 1);
 
-    GDALRasterBandH hBand;
-    GDALRasterBandH *raster;
+    GDALDatasetH dataset;
+    GDALDatasetH *layer;
 
+    /* open -> dataset */
     GDALAllRegister(); /* register drivers */
-    hDataset = GDALOpen(file, GA_ReadOnly);
-    hBand = GDALGetRasterBand(hDataset, 1);
+    dataset = GDALOpen(file, GA_ReadOnly);
 
     /* void *lua_newuserdata (lua_State *L, size_t size); */
+    layer = (GDALDatasetH *)lua_newuserdata(L, sizeof(GDALDatasetH));
+    *layer = dataset;
+
+    return 1;
+}
+
+static int l_raster (lua_State *L) {
+    /* void *lua_touserdata (lua_State *L, int index); */
+    GDALDatasetH *dataset = (GDALDatasetH *)lua_touserdata(L, 1);
+    //GDALRasterBandH *r = (GDALRasterBandH *)lua_touserdata(L, 1);
+
+    GDALRasterBandH band;
+    band = GDALGetRasterBand(*dataset, 1);
+
+    GDALRasterBandH *raster;
     raster = (GDALRasterBandH *)lua_newuserdata(L, sizeof(GDALRasterBandH));
-    *raster = hBand;
+    *raster = band;
 
     /* support OO access (PiL2, p.263) */
     luaL_getmetatable(L, "lgdalmt");
@@ -106,25 +119,18 @@ static int l_ymax (lua_State *L) {
 
 /* lonlat2xy */
 static int l_lonlat2xy (lua_State *L) {
-    /* lonlat instead of latlon convention, as in openModeller */
-    double lat = lua_tonumber(L, 1);
+    /* void *lua_touserdata (lua_State *L, int index); */
+    GDALDatasetH *dataset = (GDALDatasetH *)lua_touserdata(L, 1);
     double lon = lua_tonumber(L, 2);
-    printf("lat = %f\n", lat);
-    printf("lon = %f\n", lon);
+    double lat = lua_tonumber(L, 3);
 
     double gt[6];
-    if (GDALGetGeoTransform(hDataset, gt) == CE_None) {
-        printf("origin = (%f, %f)\n", gt[0], gt[3]);
-        printf("pixel size = (%f, %f)\n", gt[1], gt[5]);
-        printf("? = (%f, %f)\n", gt[2], gt[4]);
-
-        int x = (lat - gt[3]) / gt[5]; /* column */
+    if (GDALGetGeoTransform(*dataset, gt) == CE_None) {
+        int x = (lat - gt[3]) / gt[5];
         lua_pushinteger(L, x);
 
-        int y = (lon - gt[0]) / gt[1]; /* line */
+        int y = (lon - gt[0]) / gt[1];
         lua_pushinteger(L, y);
-
-        printf("(x, y) = (%d, %d)\n", x, y);
     }
 
     return 2;
@@ -135,10 +141,35 @@ static int l_read (lua_State *L) {
     /* void *lua_touserdata (lua_State *L, int index); */
     GDALRasterBandH *r = (GDALRasterBandH *)lua_touserdata(L, 1);
 
-    float *pafScanline;
-    /* Lua has 3 ways to exchange values between functions: registry,
-     * environment, upvalues. We'll use the ... */
-    //pafScanline = (float *)CPLMalloc(sizeof (float)*x);
+    int x = GDALGetRasterBandXSize(*r);
+    int y = GDALGetRasterBandYSize(*r);
+
+    int i, j;
+    float *line;
+    line = (float *) calloc(sizeof(float), x);
+
+    double nodata = GDALGetRasterNoDataValue(*r, 0);
+
+    lua_newtable(L); /* lines, stack index 2 */
+    for (i = 0; i < y; i++) {
+        GDALRasterIO(*r, GF_Read, 0, i, x, 1, line,
+                     x, 1, GDT_Float32, 0, 0);
+
+        lua_newtable(L); /* columns, stack index 3 */
+        for (j = 0; j < x; j++) {
+            lua_pushinteger(L, j);
+            lua_pushnumber(L, line[j]);
+            lua_settable(L, 3);
+
+            //printf("C: %dx%d: %f\n", i, j, line[j]);
+        }
+
+        lua_pushinteger(L, i);
+        lua_insert(L, 3);
+        lua_settable(L, 2);
+    }
+
+    free(line);
 
     return 1;
 }
@@ -146,6 +177,7 @@ static int l_read (lua_State *L) {
 /* functions */
 static const struct luaL_Reg lgdal_f [] = {
     {"open", l_open},
+    {"raster", l_raster},
     {"lonlat2xy", l_lonlat2xy},
     {NULL, NULL} /* sentinel */
 };

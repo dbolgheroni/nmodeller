@@ -43,11 +43,8 @@
 
 #include "gdal.h"
  
-/* globals */
-
 /* open */
 static int l_open (lua_State *L) {
-    printf("opening raster\n");
     const char *file;
     file = lua_tostring(L, 1);
 
@@ -65,21 +62,13 @@ static int l_open (lua_State *L) {
     return 1;
 }
 
-static int l_raster (lua_State *L) {
+static int l_band (lua_State *L) {
     /* void *lua_touserdata (lua_State *L, int index); */
     GDALDatasetH *dataset = (GDALDatasetH *)lua_touserdata(L, 1);
-    //GDALRasterBandH *r = (GDALRasterBandH *)lua_touserdata(L, 1);
 
-    GDALRasterBandH band;
-    band = GDALGetRasterBand(*dataset, 1);
-
-    GDALRasterBandH *raster;
-    raster = (GDALRasterBandH *)lua_newuserdata(L, sizeof(GDALRasterBandH));
-    *raster = band;
-
-    /* support OO access (PiL2, p.263) */
-    luaL_getmetatable(L, "lgdalmt");
-    lua_setmetatable(L, -2);
+    GDALRasterBandH *band;
+    band = (GDALRasterBandH *)lua_newuserdata(L, sizeof(GDALRasterBandH));
+    *band = GDALGetRasterBand(*dataset, 1);
 
     return 1;
 }
@@ -175,35 +164,32 @@ static int l_read (lua_State *L) {
 }
 
 /* functions */
-static const struct luaL_Reg lgdal_f [] = {
+static const struct luaL_Reg lgdal [] = {
     {"open", l_open},
-    {"raster", l_raster},
+    {"band", l_band},
+    {"read", l_read},
     {"lonlat2xy", l_lonlat2xy},
-    {NULL, NULL} /* sentinel */
-};
- 
-/* methods */
-static const struct luaL_Reg lgdal_m [] = {
     {"nodata", l_nodata},
     {"xmax", l_xmax},
     {"ymax", l_ymax},
     {"read", l_read},
     {NULL, NULL} /* sentinel */
 };
-
+ 
 /* main function */
 int luaopen_lgdal (lua_State *L) {
     /* set an environment to share data within module (PiL2, p.254) */
-    lua_newtable(L);
-    lua_replace(L, LUA_ENVIRONINDEX);
+    //lua_newtable(L);
+    //lua_replace(L, LUA_ENVIRONINDEX);
 
     /* support OO access (PiL2, p.266) */
-    luaL_newmetatable(L, "lgdalmt");
-    lua_pushvalue(L, -1); /* duplicate the metatable */
-    lua_setfield(L, -2, "__index");
+    //luaL_newmetatable(L, "lgdalmt");
+    //lua_pushvalue(L, -1); /* duplicate the metatable */
+    //lua_setfield(L, -2, "__index");
 
-    luaL_register(L, NULL, lgdal_m);
-    luaL_register(L, "lgdal", lgdal_f); /* 5.1 */
+    //luaL_register(L, NULL, lgdal_m);
+    //luaL_register(L, "lgdal", lgdal_f); /* 5.1 */
+    luaL_register(L, "lgdal", lgdal); /* 5.1 */
     //luaL_newlib(L, mylib); /* 5.2 */
     return 1;
 }

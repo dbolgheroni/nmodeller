@@ -1,5 +1,7 @@
 #!/usr/bin/env lua51
+
 --[[
+
 Copyright (c) 2013, Daniel Bolgheroni. All rights reserved.
  
 Redistribution and use in source and binary forms, with or without
@@ -28,13 +30,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]]
 
 local gdal = require "lgdal"
+local bioclim = require "alg_bioclim"
 
 -- some initial definitions
 prefix = "[nmodeller] "
 
-job = arg[1]
 -- check for the file describing the job
-if job and io.open(job) then -- TODO: deal with an empty jog
+job = arg[1]
+if job and io.open(job) then
     dofile(job)
     print(prefix .. job .. " opened succesfully")
 else
@@ -44,13 +47,52 @@ end
 
 print(prefix .. #occ .. " occurrence points found")
 
-dataset = gdal.open("temp_avg.tif")
-l = gdal.raster(dataset);
+-- 1:1 dataset/band, in other words, there is 1 band (band)
+-- for each dataset (only 1 band supported)
+dataset = {}
+band = {}
+raster = {}
+for i, file in ipairs(envvars) do
+    print(prefix .. "opening " .. file)
+    dataset[i] = gdal.open(file) -- TODO: check for error
 
-envvar = {}
-envvar = l:read();
-
-for i, v in ipairs(occ) do
-    x, y = gdal.lonlat2xy(dataset, v[3], v[4])
-    print(x, y, string.format('%.2f', envvar[x][y]))
+    print(prefix .. "reading " .. file)
+    band[i] = gdal.band(dataset[i]) -- TODO: check for error
+    raster[i] = gdal.read(band[i]);
 end
+
+function getsamples ()
+    local samples = {}
+
+    for i, o in ipairs(occ) do
+        local lon = o[3]
+        local lat = o[4]
+        local occ = {}
+
+        -- cycle between each environmental variable for each occurrence 
+        for j, p in ipairs(raster) do
+            x, y = gdal.lonlat2xy(dataset[j], lon, lat)
+            value = raster[j][x][y]
+            table.insert(occ, raster[j][x][y])
+        end
+
+        table.insert(samples, occ);
+    end
+
+    return samples;
+end
+
+-- nmodeller work begins here
+samples = {}
+samples = getsamples()
+
+-- print samples
+for i, v in ipairs(samples) do
+    print(prefix .. samples[i][1] .. ", " .. samples[i][2])
+end
+
+-- choose algorithm
+alg = bioclim
+
+alg.init(samples)
+alg.work(raster)

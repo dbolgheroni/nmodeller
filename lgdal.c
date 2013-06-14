@@ -51,7 +51,6 @@ static int l_open (lua_State *L) {
     GDALDatasetH dataset;
     GDALDatasetH *layer;
 
-    /* open -> dataset */
     GDALAllRegister(); /* register drivers */
     dataset = GDALOpen(file, GA_ReadOnly);
 
@@ -130,35 +129,82 @@ static int l_read (lua_State *L) {
     /* void *lua_touserdata (lua_State *L, int index); */
     GDALRasterBandH *r = (GDALRasterBandH *)lua_touserdata(L, 1);
 
-    int x = GDALGetRasterBandXSize(*r);
-    int y = GDALGetRasterBandYSize(*r);
+    int xmax = GDALGetRasterBandXSize(*r);
+    int ymax = GDALGetRasterBandYSize(*r);
 
     int i, j;
     float *line;
-    line = (float *) calloc(sizeof(float), x);
+    line = (float *) calloc(sizeof(float), xmax);
 
     double nodata = GDALGetRasterNoDataValue(*r, 0);
 
     lua_newtable(L); /* lines, stack index 2 */
-    for (i = 0; i < y; i++) {
-        GDALRasterIO(*r, GF_Read, 0, i, x, 1, line,
-                     x, 1, GDT_Float32, 0, 0);
+    for (i = 0; i < ymax; i++) {
+        GDALRasterIO(*r, GF_Read, 0, i, xmax, 1, line,
+                     xmax, 1, GDT_Float32, 0, 0);
 
         lua_newtable(L); /* columns, stack index 3 */
-        for (j = 0; j < x; j++) {
-            lua_pushinteger(L, j);
+        for (j = 0; j < xmax; j++) {
+            lua_pushinteger(L, j + 1); /* offset to match Lua 1-index */
             lua_pushnumber(L, line[j]);
             lua_settable(L, 3);
 
             //printf("C: %dx%d: %f\n", i, j, line[j]);
         }
 
-        lua_pushinteger(L, i);
+        lua_pushinteger(L, i + 1); /* offset to match Lua 1-index */
         lua_insert(L, 3);
         lua_settable(L, 2);
     }
 
     free(line);
+
+    return 1;
+}
+
+/* write */
+static int l_write (lua_State *L) {
+    int i, j, xmax, ymax;
+    const char *maskfile = lua_tostring(L, 1);
+
+    float *line;
+    line = (float *) calloc(sizeof(float), xmax);
+
+    GDALDatasetH mask;
+    mask = GDALOpen(maskfile, GA_ReadOnly);
+
+    GDALDatasetH proj;
+    GDALDriverH driver = GDALGetDriverByName("GTiff");
+    proj = GDALCreateCopy(driver, "projdev.tif", mask, FALSE,
+                          NULL, NULL, NULL);
+
+    GDALRasterBandH band;
+    band = GDALGetRasterBand(proj, 1);
+
+    xmax = GDALGetRasterBandXSize(band);
+    ymax = GDALGetRasterBandYSize(band);
+    printf("xmax = %d; ymax = %d\n", xmax, ymax);
+
+    for (i = 0; i < ymax; i++) {
+        lua_pushinteger(L, i + 1);
+        lua_gettable(L, 2);
+
+        for (j = 0; j < xmax; j++) {
+            lua_pushinteger(L, j + 1);
+            lua_gettable(L, 3);
+            line[j] = (float)lua_tonumber(L, 4);
+            //printf("lgdal: %d %d %f\n", i, j, line[j]);
+            
+            lua_pop(L, 1);
+        }
+
+        GDALRasterIO(band, GF_Write, 0, i, xmax, 1, 
+                     line, xmax, 1, GDT_Float32, 0, 0);
+
+        lua_pop(L, 1);
+    }
+
+    GDALClose(proj);
 
     return 1;
 }
@@ -173,6 +219,7 @@ static const struct luaL_Reg lgdal [] = {
     {"xmax", l_xmax},
     {"ymax", l_ymax},
     {"read", l_read},
+    {"write", l_write},
     {NULL, NULL} /* sentinel */
 };
  

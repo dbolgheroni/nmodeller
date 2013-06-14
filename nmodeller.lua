@@ -32,66 +32,96 @@ local gdal = require "lgdal"
 local bioclim = require "alg_bioclim"
 
 -- some initial definitions
-prefix = "[nmodeller] "
+prefix  = "[mod] "
+dbgprefix = "[dbg] "
 
 -- check for the file describing the job
-job = arg[1]
-if job and io.open(job) then
-    dofile(job)
-    print(prefix .. job .. " opened succesfully")
+jobfile = arg[1]
+if jobfile and io.open(jobfile) then
+    dofile(jobfile)
+    print(prefix .. jobfile .. " opened succesfully")
 else
     print("no file describing the job")
     os.exit(1)
 end
 
-print(prefix .. #occ .. " occurrence points found")
+print(prefix .. #job.occ .. " occurrence points found")
+
+-- debug code
+debug = job.debug
 
 -- 1:1 dataset/band, in other words, there is 1 band (band)
 -- for each dataset (only 1 band supported)
 dataset = {}
 band = {}
 raster = {}
-for i, file in ipairs(envvars) do
+for n, file in ipairs(job.envvars) do
     print(prefix .. "opening " .. file)
-    dataset[i] = gdal.open(file) -- TODO: check for error
+    dataset[n] = gdal.open(file) -- TODO: check for error
 
     print(prefix .. "reading " .. file)
-    band[i] = gdal.band(dataset[i]) -- TODO: check for error
-    raster[i] = gdal.read(band[i]);
+    band[n] = gdal.band(dataset[n]) -- TODO: check for error
+    raster[n] = gdal.read(band[n]);
 end
 
 function getsamples ()
     local samples = {}
 
-    for i, o in ipairs(occ) do
+    for _, o in ipairs(job.occ) do
         local lon = o[3]
         local lat = o[4]
         local occ = {}
 
         -- cycle between each environmental variable for each occurrence 
         for j, p in ipairs(raster) do
+            local x, y
             x, y = gdal.lonlat2xy(dataset[j], lon, lat)
+            x = x + 1 -- offset to match Lua 1-index
+            y = y + 1 -- offset to match Lua 1-index
+
             value = raster[j][x][y]
-            table.insert(occ, raster[j][x][y])
+            occ[#occ+1] = raster[j][x][y]
         end
 
-        table.insert(samples, occ);
+        samples[#samples+1] = occ
     end
 
     return samples;
 end
 
--- nmodeller work begins here
 samples = {}
 samples = getsamples()
 
 -- print samples
-for i, v in ipairs(samples) do
-    print(prefix .. samples[i][1] .. ", " .. samples[i][2])
+if debug then
+    print(dbgprefix .. "samples: ")
+    for i, v in ipairs(samples) do
+        print(dbgprefix .. samples[i][1], samples[i][2])
+    end
 end
 
 -- choose algorithm
-alg = bioclim
+print(prefix)
+print(prefix .. "Algorithm selection: ")
+print(prefix .. " [1] BIOCLIM")
+io.write(prefix .. "Option[1]: ")
+local algoption = tonumber(io.read("*l")) or 1
 
-alg.init(samples)
-alg.work(raster)
+if algoption == 1 then alg = bioclim end
+
+-- main
+alg.init(samples) -- init algorithms with samples from the job file
+proj = alg.work(raster) -- the real work
+
+gdal.write(job.mask, proj) -- do the projection
+
+--[[
+local count = 0
+for j, line in ipairs(proj) do
+    for i, x in ipairs(line) do
+        count = count + 1
+        print(i, j, x)
+    end
+end
+print(count)
+--]]

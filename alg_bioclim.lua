@@ -1,5 +1,5 @@
 --[[
-Bioclim algorithm module
+BIOCLIM algorithm module
 ------------------------
 
 Copyright (c) 2013, Daniel Bolgheroni. All rights reserved.
@@ -34,7 +34,7 @@ local M = {}
 local gdal = require "lgdal"
 
 -- some initial definitions
-M.prefix = "[..bioclim] "
+M.prefix = "[alg] "
 
 -- avoid costly recalculations
 local _min = {}
@@ -63,7 +63,7 @@ function getmin (samples)
             if s[n] < minv then minv = s[n] end
         end
 
-        table.insert(min, minv)
+        min[#min+1] = minv
     end
 
     return min
@@ -90,7 +90,7 @@ function getmax (samples)
             if s[n] > maxv then maxv = s[n] end
         end
 
-        table.insert(max, maxv)
+        max[#max+1] = maxv
     end
 
     return max
@@ -113,7 +113,7 @@ function getmean (samples)
         end
         meanv = sum / #samples
 
-        table.insert(mean, meanv)
+        mean[#mean+1] = meanv
     end
 
     return mean
@@ -135,8 +135,7 @@ function getstddev (samples)
     for n=1,nenvvar do
         local sum = 0
         local var2
-        local meanv = mean[n] -- TODO: store in a module var
-                              -- to not recalculate
+        local meanv = mean[n] 
 
         for _, s in ipairs(samples) do
             sum = sum + math.pow(s[n] - meanv, 2)
@@ -144,7 +143,7 @@ function getstddev (samples)
         var2 = sum / (#samples - 1)
 
         -- standard deviation
-        table.insert(stddev, math.sqrt(var2))
+        stddev[#stddev+1] = math.sqrt(var2)
     end
 
     return stddev
@@ -166,7 +165,7 @@ function getenvelope (cutoff)
         local e
         e = mean[n] - cutoff*stddev[n]
 
-        table.insert(envelope, e)
+        envelope[#envelope+1] = e
     end
 
     return envelope
@@ -180,34 +179,37 @@ function M.init (samples)
     _stddev = getstddev(samples)
 
     io.write(M.prefix .. "Standard deviation cutoff [0.674]: ")
-    cutoff = tonumber(io.read("*l")) or tonumber(0.674)
+    cutoff = tonumber(io.read("*l")) or 0.674
     _envelope = getenvelope(cutoff)
 
-    -- debug
-    nenvvar = #samples[1]
-    for n=1,nenvvar do
-        print("_min[" .. n .. "] = " .. _min[n])
-        print("_max[" .. n .. "] = " .. _max[n])
-        print("_mean[" .. n .. "] = " .. _mean[n])
-        print("_stddev[" .. n .. "] = " .. _stddev[n])
+    -- debug code ------------------------------------------
+    if debug then
+        print(dbgprefix .. "alg.init: ")
 
-        print("_envelope[" .. n .. "] = " .. _envelope[n])
+        nenvvar = #samples[1]
+        for n=1,nenvvar do
+            print(dbgprefix .. "_min[" .. n .. "]      = " .. _min[n])
+            print(dbgprefix .. "_max[" .. n .. "]      = " .. _max[n])
+            print(dbgprefix .. "_mean[" .. n .. "]     = " .. _mean[n])
+            print(dbgprefix .. "_stddev[" .. n .. "]   = " .. _stddev[n])
 
-        print()
+            print(dbgprefix .. "_envelope[" .. n .. "] = " .. _envelope[n])
+        end
     end
+    -- end of debug code -----------------------------------
 end
 
 -- the kernel of the algorithm
 function M.work (raster)
-    projection = {}
+    proj = {}
 
     nenvvar = #raster -- number of environmental variables
-    ymax = #raster[1] -- rows
-    xmax = #raster[1][1] -- columns
+    ymax = #raster[1] -- lines
+    xmax = #raster[1][1]
 
     -- nodata
     local nodata = {}
-    for n=1,nenvvar do table.insert(nodata, gdal.nodata(band[n])) end
+    for n=1,nenvvar do nodata[#nodata+1] = gdal.nodata(band[n]) end
 
     -- iterate between each pointer
     for i=1,ymax do -- every line
@@ -218,12 +220,27 @@ function M.work (raster)
             local inenvelope = 0
 
             -- for each point, look in all envvar for the values
+            local first = true -- for debug code
+            local printv = true -- for debug code
             for n=1,nenvvar do
                 p = raster[n][i][j] -- point value
 
-                -- does not print nodata values
-                if p == nodata[n] then break end
-                --io.write(p .. " ")
+                if p == nodata[n] then
+                    line[#line + 1] = nodata[n]
+                    printv = false -- debug code
+                    break
+                end
+
+                -- debug code ------------------------------------------
+                if debug then
+                    if first then
+                        io.write(dbgprefix)
+                        first = false
+                    end
+
+                    io.write(string.format("%.02f", p) .. "\t")
+                end
+                -- end of debug code -----------------------------------
 
                 if p < _min[n] or p > _max[n] then
                     outlimit = true
@@ -237,16 +254,26 @@ function M.work (raster)
             end
 
             if outlimit then                  -- unsuitable
-                table.insert(line, 0.0)
+                line[#line+1] = 0.0
             elseif inenvelope == nenvvar then -- suitable
-                table.insert(line, 1.0)
+                line[#line+1] = 1.0
             elseif inenvelope > 0 then        -- marginal
-                table.insert(line, 0.5)
+                line[#line+1] = 0.5
             end
+
+            -- debug code ------------------------------------------
+            if debug and printv then
+                if line[#line] then
+                    print(string.format("%.02f", line[#line]))
+                end
+            end
+            -- end of debug code -----------------------------------
         end
 
-        table.insert(projection, line)
+        proj[#proj+1] = line
     end
+
+    return proj
 end
 
 return M

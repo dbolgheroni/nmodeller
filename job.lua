@@ -1,11 +1,17 @@
+-- example job
+job = {}
+
 -- list of maps used as environmental variables
-envvars = { "rain_coolest.tif", "temp_avg.tif" }
+job.envvars = { "rain_coolest.tif", "temp_avg.tif" }
+
+-- mask
+job.mask = "rain_coolest.tif"
 
 -- filename of the output model
-output = "output.txt"
+job.output = "output.txt"
 
 -- list of species occurrence
-occ = {
+job.occ = {
     {  1, "furcata boliviana", -68.85, -11.15, 1 },
     {  2, "furcata boliviana", -67.38, -14.32, 1 },
     {  3, "furcata boliviana", -67.55, -14.33, 1 },
@@ -72,3 +78,6 @@ occ = {
     { 64, "furcata boliviana", -69.97, -13.80, 1 },
     { 65, "furcata boliviana", -69.66, -13.88, 1 }
 }
+
+--job.debug = true
+job.debug = false

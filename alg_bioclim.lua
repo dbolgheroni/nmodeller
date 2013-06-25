@@ -29,6 +29,17 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --]]
 
+--[[
+o suitable: if all associated environmental values fall within the
+calculated envelopes;
+
+o marginal: if one or more associated environmental value falls outside
+the calculated envelope, but still within the upper and lower limits;
+
+o unsuitable: if one or more associated enviromental value falls outside
+the upper and lower limits;
+--]]
+
 local M = {}
 
 local gdal = require "lgdal"
@@ -172,15 +183,18 @@ function getenvelope (cutoff)
 end
 
 -- initialize basic values needed for the algorithm
-function M.init (samples)
+function M.init (samples, algparam)
     _min = getmin(samples)
     _max = getmax(samples)
     _mean = getmean(samples)
     _stddev = getstddev(samples)
 
-    io.write(M.prefix .. "Standard deviation cutoff [0.674]: ")
-    cutoff = tonumber(io.read("*l")) or 0.674
-    _envelope = getenvelope(cutoff)
+    if not algparam.cutoff then
+        io.write(M.prefix .. "Standard deviation cutoff [0.674]: ")
+        algparam.cutoff = tonumber(io.read("*l")) or 0.674
+    end
+
+    _envelope = getenvelope(algparam.cutoff)
 
     -- debug code ------------------------------------------
     if debug then
@@ -210,6 +224,7 @@ function M.work (raster)
     -- nodata
     local nodata = {}
     for n=1,nenvvar do nodata[#nodata+1] = gdal.nodata(band[n]) end
+    local nodatav = 101
 
     -- iterate between each pointer
     for i=1,ymax do -- every line
@@ -220,13 +235,15 @@ function M.work (raster)
             local inenvelope = 0
 
             -- for each point, look in all envvar for the values
-            local first = true -- for debug code
-            local printv = true -- for debug code
+            local first = true -- debug code
+            local printv = true -- debug code
+
             for n=1,nenvvar do
                 p = raster[n][i][j] -- point value
 
+                -- nodata
                 if p == nodata[n] then
-                    line[#line + 1] = nodata[n]
+                    line[#line+1] = nodatav
                     printv = false -- debug code
                     break
                 end
@@ -273,6 +290,7 @@ function M.work (raster)
         proj[#proj+1] = line
     end
 
+    print(M.prefix .. "nodata = " .. nodatav)
     return proj
 end
 

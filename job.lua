@@ -1,11 +1,15 @@
--- example job
+-- example job ---------------------------------------------------------
 job = {}
 
 -- list of maps used as environmental variables
 job.envvars = { "rain_coolest.tif", "temp_avg.tif" }
 
 -- mask
-job.mask = "rain_coolest.tif"
+job.mask = "temp_avg.tif"
+
+-- algorithm used
+job.algorithm = 1
+job.cutoff = 0.674
 
 -- filename of the output model
 job.output = "output.txt"

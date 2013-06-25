@@ -164,48 +164,69 @@ static int l_read (lua_State *L) {
 
 /* write */
 static int l_write (lua_State *L) {
-    int i, j, xmax, ymax;
     const char *maskfile = lua_tostring(L, 1);
 
-    float *line;
-    line = (float *) calloc(sizeof(float), xmax);
+    GDALDatasetH mask_ds;
+    GDALDatasetH proj_ds;
 
-    GDALDatasetH mask;
-    mask = GDALOpen(maskfile, GA_ReadOnly);
+    GDALRasterBandH mask_b;
+    GDALRasterBandH proj_b;
 
-    GDALDatasetH proj;
     GDALDriverH driver = GDALGetDriverByName("GTiff");
-    proj = GDALCreateCopy(driver, "projdev.tif", mask, FALSE,
-                          NULL, NULL, NULL);
 
-    GDALRasterBandH band;
-    band = GDALGetRasterBand(proj, 1);
+    int i, j, xmax, ymax;
+    const char *projref; /* WGS84? */
+    double gt[6]; /* geo transform (for origin, pixel size) */
 
-    xmax = GDALGetRasterBandXSize(band);
-    ymax = GDALGetRasterBandYSize(band);
-    printf("xmax = %d; ymax = %d\n", xmax, ymax);
+    GByte *line;
+    char **opt = NULL;
+
+    mask_ds = GDALOpen(maskfile, GA_ReadOnly);
+
+    /* mask */
+    mask_b = GDALGetRasterBand(mask_ds, 1);
+    xmax = GDALGetRasterBandXSize(mask_b);
+    ymax = GDALGetRasterBandYSize(mask_b);
+    GDALGetGeoTransform(mask_ds, gt); /* geo transform */
+
+    /* create the projection file */
+    proj_ds = GDALCreate(driver, "output.tif", xmax, ymax, 1,
+                      GDT_Byte, opt);
+    proj_b = GDALGetRasterBand(proj_ds, 1);
+
+    GDALSetGeoTransform(proj_ds, gt); /* geo transform */
+
+    /* set projection reference */
+    projref = GDALGetProjectionRef(mask_ds);
+    GDALSetProjection(proj_ds, projref);
+
+    /* set nodata value */
+    GDALSetRasterNoDataValue(proj_b, 116); /* 101 */
+
+    /* iterate between each value of environmental variables */
+    line = (GByte *) calloc(sizeof(GByte), xmax);
 
     for (i = 0; i < ymax; i++) {
-        lua_pushinteger(L, i + 1);
-        lua_gettable(L, 2);
+        lua_pushinteger(L, i + 1); /* this value gets popped */
+        lua_gettable(L, 2); /* second parameter */
 
         for (j = 0; j < xmax; j++) {
             lua_pushinteger(L, j + 1);
             lua_gettable(L, 3);
-            line[j] = (float)lua_tonumber(L, 4);
-            //printf("lgdal: %d %d %f\n", i, j, line[j]);
-            
+            line[j] = (GByte)(lua_tonumber(L, 4) * 100);
+            //printf("lgdal: %d %d %d\n", i, j, line[j]);
+
             lua_pop(L, 1);
         }
 
-        GDALRasterIO(band, GF_Write, 0, i, xmax, 1, 
-                     line, xmax, 1, GDT_Float32, 0, 0);
+        GDALRasterIO(proj_b, GF_Write, 0, i, xmax, 1,
+                     line, xmax, 1, GDT_Byte, 0, 0);
 
         lua_pop(L, 1);
     }
 
-    GDALClose(proj);
-
+    GDALClose(mask_ds);
+    GDALClose(proj_ds);
     return 1;
 }
 

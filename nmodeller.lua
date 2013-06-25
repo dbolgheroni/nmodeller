@@ -32,7 +32,7 @@ local gdal = require "lgdal"
 local bioclim = require "alg_bioclim"
 
 -- some initial definitions
-prefix  = "[mod] "
+prefix = "[mod] "
 dbgprefix = "[dbg] "
 
 -- check for the file describing the job
@@ -101,27 +101,27 @@ if debug then
 end
 
 -- choose algorithm
-print(prefix)
-print(prefix .. "Algorithm selection: ")
-print(prefix .. " [1] BIOCLIM")
-io.write(prefix .. "Option[1]: ")
-local algoption = tonumber(io.read("*l")) or 1
+if not job.algorithm then
+    print(prefix)
+    print(prefix .. "Algorithm selection: ")
+    print(prefix .. " [1] BIOCLIM")
+    io.write(prefix .. "Option[1]: ")
+    job.algorithm = tonumber(io.read("*l")) or 1
+end
 
-if algoption == 1 then alg = bioclim end
+algparam = {}
+if job.algorithm == 1 then
+    alg = bioclim
+
+    -- it's optional to pass a table with parameters to the algorithm
+    if job.cutoff then algparam.cutoff = job.cutoff end
+end
 
 -- main
-alg.init(samples) -- init algorithms with samples from the job file
+alg.init(samples, algparam) -- init algorithms with samples from the job file
+local nodatav
 proj = alg.work(raster) -- the real work
 
+print(prefix .. "projecting model")
+--gdal.write(job.mask, proj) -- do the projection
 gdal.write(job.mask, proj) -- do the projection
-
---[[
-local count = 0
-for j, line in ipairs(proj) do
-    for i, x in ipairs(line) do
-        count = count + 1
-        print(i, j, x)
-    end
-end
-print(count)
---]]

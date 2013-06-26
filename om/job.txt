@@ -1,0 +1,22 @@
+# openModeller example job file
+
+WKT Coord System = GEOGCS["WGS84", DATUM["WGS84", SPHEROID["WGS84", 6378137.0, 298.257223563]], PRIMEM["Greenwich", 0.0], UNIT["degree", 0.017453292519943295], AXIS["Longitude",EAST], AXIS["Latitude",NORTH]]
+
+Occurrences source = om/furcata_boliviana.txt
+Occurrences group = furcata boliviana
+
+Map = rain_coolest.tif
+Map = temp_avg.tif
+
+Mask = rain_coolest.tif
+
+Output map = rain_coolest.tif
+Output map = temp_avg.tif
+Output format = rain_coolest.tif
+Output mask = rain_coolest.tif
+Output model = furcata.xml
+Output file = om/furcata.img
+Output file type = ByteHFA
+
+Algorithm = BIOCLIM
+Parameter = StandardDeviationCutoff 0.674

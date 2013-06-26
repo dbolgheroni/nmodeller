@@ -215,11 +215,11 @@ end
 
 -- the kernel of the algorithm
 function M.work (raster)
-    proj = {}
+    local proj = {}
 
-    nenvvar = #raster -- number of environmental variables
-    ymax = #raster[1] -- lines
-    xmax = #raster[1][1]
+    local nenvvar = #raster -- number of environmental variables
+    local ymax = #raster[1] -- lines
+    local xmax = #raster[1][1]
 
     -- nodata
     local nodata = {}
@@ -230,58 +230,58 @@ function M.work (raster)
     for i=1,ymax do -- every line
         line = {}
 
-        for j=1,xmax do -- every line value
-            local outlimit = false
-            local inenvelope = 0
+        for j=1,xmax do -- every point in line
+            local sample = {} -- for debug code only
+
+            local tnodata = false
+            local tsuitable = false
+            local tmarginal = false
+            local tunsuitable = false
 
             -- for each point, look in all envvar for the values
-            local first = true -- debug code
-            local printv = true -- debug code
-
             for n=1,nenvvar do
-                p = raster[n][i][j] -- point value
+                local p = raster[n][i][j] -- point value
+                sample[#sample+1] = p 
 
                 -- nodata
                 if p == nodata[n] then
-                    line[#line+1] = nodatav
-                    printv = false -- debug code
+                    tnodata = true
                     break
                 end
 
-                -- debug code ------------------------------------------
-                if debug then
-                    if first then
-                        io.write(dbgprefix)
-                        first = false
-                    end
-
-                    io.write(string.format("%.02f", p) .. "\t")
-                end
-                -- end of debug code -----------------------------------
-
+                -- unsuitable
                 if p < _min[n] or p > _max[n] then
-                    outlimit = true
+                    tunsuitable = true
                     break
                 end
 
+                -- marginal
                 local q = p - _mean[n]
-                if q > -_envelope[n] and q < _envelope[n] then
-                    inenvelope = inenvelope + 1
+                if q < -_envelope[n] or q > _envelope[n] then
+                    tmarginal = true
                 end
             end
 
-            if outlimit then                  -- unsuitable
+            if tnodata then
+                line[#line+1] = nodatav 
+            elseif tunsuitable then
                 line[#line+1] = 0.0
-            elseif inenvelope == nenvvar then -- suitable
-                line[#line+1] = 1.0
-            elseif inenvelope > 0 then        -- marginal
+            elseif tmarginal then
                 line[#line+1] = 0.5
+            else
+                line[#line+1] = 1.0
             end
 
             -- debug code ------------------------------------------
-            if debug and printv then
-                if line[#line] then
-                    print(string.format("%.02f", line[#line]))
+            if debug then
+                if line[#line] > 0.0 then
+                    io.write(dbgprefix)
+
+                    for _, p in ipairs(sample) do
+                        io.write(string.format("%.02f", p) .. "\t")
+                    end
+
+                    print(string.format("%.02f", line[#line]) .. "\t")
                 end
             end
             -- end of debug code -----------------------------------

@@ -1,0 +1,1 @@
+LD_PRELOAD=/usr/lib/libpthread.so ./nmodeller.lua job.lua

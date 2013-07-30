@@ -20,3 +20,6 @@ Output file type = ByteHFA
 
 Algorithm = BIOCLIM
 Parameter = StandardDeviationCutoff 0.674
+
+Confusion matrix = false
+AUC = false

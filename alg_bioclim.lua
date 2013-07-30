@@ -42,8 +42,6 @@ the upper and lower limits;
 
 local M = {}
 
-local gdal = require "lgdal"
-
 -- some initial definitions
 M.prefix = "[alg] "
 
@@ -216,16 +214,17 @@ function M.init (samples, algparam)
 end
 
 -- the kernel of the algorithm
-function M.work (raster)
+function M.work (algparam, nodata, samples, raster)
     local proj = {}
 
     local nenvvar = #raster -- number of environmental variables
     local ymax = #raster[1] -- lines
     local xmax = #raster[1][1]
 
+    -- init algorithm
+    M.init(samples, algparam)
+
     -- nodata
-    local nodata = {}
-    for n=1,nenvvar do nodata[#nodata+1] = gdal.nodata(band[n]) end
     local nodatav = 101
 
     -- iterate between each pointer
@@ -291,7 +290,6 @@ function M.work (raster)
         proj[#proj+1] = line
     end
 
-    print(M.prefix .. "nodata = " .. nodatav)
     return proj
 end
 

@@ -55,13 +55,17 @@ debug = job.debug
 dataset = {}
 band = {}
 raster = {}
+nodata = {}
 for n, file in ipairs(job.envvars) do
     print(prefix .. "opening " .. file)
     dataset[n] = gdal.open(file) -- TODO: check for error
 
     print(prefix .. "reading " .. file)
     band[n] = gdal.band(dataset[n]) -- TODO: check for error
-    raster[n] = gdal.read(band[n]);
+    raster[n] = gdal.read(band[n])
+
+    -- this avoids having to load gdal within some algorithms 
+    nodata[n] = gdal.nodata(band[n])
 end
 
 function getsamples ()
@@ -118,8 +122,7 @@ if job.algorithm == 1 then
 end
 
 -- main
-alg.init(samples, algparam) -- init algorithms with samples from the job file
-proj = alg.work(raster) -- the real work
+local proj = alg.work(algparam, nodata, samples, raster) -- the real work
 
 print(prefix .. "projecting model")
 gdal.write(job.mask, proj) -- do the projection

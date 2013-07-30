@@ -1,5 +1,5 @@
 --[[
-BIOCLIM algorithm module
+Bioclim algorithm module
 ------------------------
 
 Copyright (c) 2013, Daniel Bolgheroni. All rights reserved.
@@ -205,9 +205,11 @@ function M.init (samples, algparam)
             print(dbgprefix .. "_min[" .. n .. "]      = " .. _min[n])
             print(dbgprefix .. "_max[" .. n .. "]      = " .. _max[n])
             print(dbgprefix .. "_mean[" .. n .. "]     = " .. _mean[n])
-            print(dbgprefix .. "_stddev[" .. n .. "]   = " .. _stddev[n])
+            print(dbgprefix .. "_stddev[" .. n .. "]   = " ..
+                  _stddev[n])
 
-            print(dbgprefix .. "_envelope[" .. n .. "] = " .. _envelope[n])
+            print(dbgprefix .. "_envelope[" .. n .. "] = " ..
+                  _envelope[n])
         end
     end
     -- end of debug code -----------------------------------

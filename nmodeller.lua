@@ -104,7 +104,7 @@ end
 if not job.algorithm then
     print(prefix)
     print(prefix .. "Algorithm selection: ")
-    print(prefix .. " [1] BIOCLIM")
+    print(prefix .. " [1] Bioclim")
     io.write(prefix .. "Option[1]: ")
     job.algorithm = tonumber(io.read("*l")) or 1
 end

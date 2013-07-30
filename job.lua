@@ -83,5 +83,4 @@ job.occ = {
     { 65, "furcata boliviana", -69.66, -13.88, 1 }
 }
 
---job.debug = true
 job.debug = false

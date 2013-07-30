@@ -1,4 +1,4 @@
-#!/usr/bin/env lua51
+#!/usr/bin/env luajit51
 
 --[[
 Copyright (c) 2013, Daniel Bolgheroni. All rights reserved.
@@ -119,9 +119,7 @@ end
 
 -- main
 alg.init(samples, algparam) -- init algorithms with samples from the job file
-local nodatav
 proj = alg.work(raster) -- the real work
 
 print(prefix .. "projecting model")
---gdal.write(job.mask, proj) -- do the projection
 gdal.write(job.mask, proj) -- do the projection

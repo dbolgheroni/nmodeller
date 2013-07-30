@@ -174,7 +174,7 @@ function getenvelope (cutoff)
 
     for n=1,nenvvar do
         local e
-        e = mean[n] - cutoff*stddev[n]
+        e = cutoff * stddev[n]
 
         envelope[#envelope+1] = e
     end
@@ -234,7 +234,6 @@ function M.work (raster)
             local sample = {} -- for debug code only
 
             local tnodata = false
-            local tsuitable = false
             local tmarginal = false
             local tunsuitable = false
 
@@ -250,14 +249,14 @@ function M.work (raster)
                 end
 
                 -- unsuitable
-                if p < _min[n] or p > _max[n] then
+                if p < _min[n] or p > _max[n] then -- out env
                     tunsuitable = true
-                    break
+                    --break
                 end
 
                 -- marginal
-                local q = p - _mean[n]
-                if q < -_envelope[n] or q > _envelope[n] then
+                local q = p - _mean[n] -- each var mean to point dist
+                if q < -_envelope[n] or q > _envelope[n] then -- in env
                     tmarginal = true
                 end
             end
@@ -274,7 +273,7 @@ function M.work (raster)
 
             -- debug code ------------------------------------------
             if debug then
-                if line[#line] > 0.0 then
+                if line[#line] > 0.0 and line[#line] ~= nodatav then
                     io.write(dbgprefix)
 
                     for _, p in ipairs(sample) do

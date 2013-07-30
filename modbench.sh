@@ -2,7 +2,7 @@
 
 echo "modbench, benchmark script for openmodeller/nmodeller"
 
-ninstance=10   
+ninstance=32  
 
 # apresentation
 echo "\033[44mblue\033[m bar represents instances of openModeller"

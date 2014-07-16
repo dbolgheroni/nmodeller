@@ -4,7 +4,7 @@ echo "modbench, benchmark script for openmodeller/nmodeller"
 
 ninstance=32  
 
-# apresentation
+# introduction/index
 echo "\033[44mblue\033[m bar represents instances of openModeller"
 echo "\033[41mred\033[m  bar represents instances of nmodeller"
 echo
@@ -20,7 +20,7 @@ done
 echo "\033[m"
 
 # process openModeller times
-mv furcata.xml om
+#mv furcata.xml om
 cat omtime | grep user | sed -e 's/^user[[:space:]]*//' > _omtime
 
 omtotalt=0

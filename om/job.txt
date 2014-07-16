@@ -14,9 +14,9 @@ Output map = rain_coolest.tif
 Output map = temp_avg.tif
 Output format = rain_coolest.tif
 Output mask = rain_coolest.tif
-Output model = furcata.xml
-Output file = om/furcata.img
-Output file type = ByteHFA
+Output model = ommodel.xml
+Output file = ommodel.tif
+Output file type = GreyTiff100
 
 Algorithm = BIOCLIM
 Parameter = StandardDeviationCutoff 0.674

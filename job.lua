@@ -1,4 +1,4 @@
--- example job ---------------------------------------------------------
+-- example job
 job = {}
 
 -- list of maps used as environmental variables
@@ -12,7 +12,7 @@ job.algorithm = 1
 job.cutoff = 0.674
 
 -- filename of the output model
-job.output = "output.txt"
+job.output = "nmmodel.tif"
 
 -- list of species occurrence
 job.occ = {

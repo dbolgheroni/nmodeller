@@ -42,17 +42,20 @@
 #include "lauxlib.h"
 
 #include "gdal.h"
+
+#define PREFIX "[gda] "
  
 /* open */
 static int l_open (lua_State *L) {
-    const char *file;
-    file = lua_tostring(L, 1);
+    const char *f;
+    f = lua_tostring(L, 1);
 
     GDALDatasetH dataset;
     GDALDatasetH *layer;
 
+    printf(PREFIX "opening %s\n", f);
     GDALAllRegister(); /* register drivers */
-    dataset = GDALOpen(file, GA_ReadOnly);
+    dataset = GDALOpen(f, GA_ReadOnly);
 
     /* void *lua_newuserdata (lua_State *L, size_t size); */
     layer = (GDALDatasetH *)lua_newuserdata(L, sizeof(GDALDatasetH));
@@ -164,7 +167,11 @@ static int l_read (lua_State *L) {
 
 /* write */
 static int l_write (lua_State *L) {
-    const char *maskfile = lua_tostring(L, 1);
+    const char *outputf = lua_tostring(L, -1);
+    lua_pop(L, 1);
+
+    printf(PREFIX "writing model to %s\n", outputf);
+    const char *maskf = lua_tostring(L, 1);
 
     GDALDatasetH mask_ds;
     GDALDatasetH proj_ds;
@@ -181,7 +188,7 @@ static int l_write (lua_State *L) {
     GByte *line;
     char **opt = NULL;
 
-    mask_ds = GDALOpen(maskfile, GA_ReadOnly);
+    mask_ds = GDALOpen(maskf, GA_ReadOnly);
 
     /* mask */
     mask_b = GDALGetRasterBand(mask_ds, 1);
@@ -189,8 +196,8 @@ static int l_write (lua_State *L) {
     ymax = GDALGetRasterBandYSize(mask_b);
     GDALGetGeoTransform(mask_ds, gt); /* geo transform */
 
-    /* create the projection file */
-    proj_ds = GDALCreate(driver, "output.tif", xmax, ymax, 1,
+    /* create the projection */
+    proj_ds = GDALCreate(driver, outputf, xmax, ymax, 1,
                       GDT_Byte, opt);
     proj_b = GDALGetRasterBand(proj_ds, 1);
 
@@ -201,7 +208,7 @@ static int l_write (lua_State *L) {
     GDALSetProjection(proj_ds, projref);
 
     /* set nodata value */
-    GDALSetRasterNoDataValue(proj_b, 116); /* 101 */
+    GDALSetRasterNoDataValue(proj_b, 116); /* TODO: don't hardcode */
 
     /* iterate between each value of environmental variables */
     line = (GByte *) calloc(sizeof(GByte), xmax);
@@ -245,7 +252,7 @@ static const struct luaL_Reg lgdal [] = {
 };
  
 /* main function */
-int luaopen_lgdal (lua_State *L) {
+int luaopen_lgdal (lua_State *L) { // TODO s/lgdal/gdal/
     /* set an environment to share data within module (PiL2, p.254) */
     //lua_newtable(L);
     //lua_replace(L, LUA_ENVIRONINDEX);

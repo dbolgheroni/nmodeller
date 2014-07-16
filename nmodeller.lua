@@ -57,10 +57,8 @@ band = {}
 raster = {}
 nodata = {}
 for n, file in ipairs(job.envvars) do
-    print(prefix .. "opening " .. file)
     dataset[n] = gdal.open(file) -- TODO: check for error
 
-    print(prefix .. "reading " .. file)
     band[n] = gdal.band(dataset[n]) -- TODO: check for error
     raster[n] = gdal.read(band[n])
 
@@ -68,6 +66,7 @@ for n, file in ipairs(job.envvars) do
     nodata[n] = gdal.nodata(band[n])
 end
 
+-- read samples
 function getsamples ()
     local samples = {}
 
@@ -115,6 +114,7 @@ end
 
 algparam = {}
 if job.algorithm == 1 then
+    print(prefix .. "using Bioclim algorithm")
     alg = bioclim
 
     -- it's optional to pass a table with parameters to the algorithm
@@ -125,4 +125,4 @@ end
 local proj = alg.work(algparam, nodata, samples, raster) -- the real work
 
 print(prefix .. "projecting model")
-gdal.write(job.mask, proj) -- do the projection
+gdal.write(job.mask, proj, job.output) -- do the projection

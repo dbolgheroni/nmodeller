@@ -188,8 +188,10 @@ function M.init (samples, algparam)
     _stddev = getstddev(samples)
 
     if not algparam.cutoff then
-        io.write(M.prefix .. "Standard deviation cutoff [0.674]: ")
+        io.write(M.prefix .. "standard deviation cutoff [0.674]: ")
         algparam.cutoff = tonumber(io.read("*l")) or 0.674
+    else
+        print(M.prefix .. "parameter cutoff = " .. algparam.cutoff)
     end
 
     _envelope = getenvelope(algparam.cutoff)
